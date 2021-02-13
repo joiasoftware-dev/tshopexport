@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>tshopexport</name>
+	<displayName><![CDATA[T-SHOP Export]]></displayName>
+	<version><![CDATA[1.1.0]]></version>
+	<description><![CDATA[Export Prestashop data into T-SHOP.]]></description>
+	<author><![CDATA[Joia Software Solutions]]></author>
+	<tab><![CDATA[quick_bulk_update]]></tab>
+	<is_configurable>1</is_configurable>
+	<need_instance>0</need_instance>
+	<limited_countries></limited_countries>
+</module>
