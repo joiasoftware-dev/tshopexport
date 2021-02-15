@@ -13,14 +13,13 @@
  *    @license   Commercial Licence
  */
 
-if (! defined('_PS_VERSION_'))
+if (!defined('_PS_VERSION_'))
     exit();
 
 class TshopExport extends Module
 {
 
     public $lang_default;
-
     public $languages;
 
     public function __construct()
@@ -188,11 +187,8 @@ class TshopExport extends Module
             else
                 $data_upd = date("d-m-y H:i:s");
             $xml->startElement('category');
-
             $xml->writeAttribute('id_prestashop', (int)$obj['id_category'] - $offset);
-
             $xml->writeAttribute('id_parent_prestashop', (int)$obj['id_parent'] - $offset);
-
             $xml->writeAttribute('active', $obj['active']);
             $xml->writeAttribute('date_upd', $data_upd);
 
@@ -403,7 +399,7 @@ class TshopExport extends Module
                 $xml->endElement();
 
                 // Combinations
-                $colori = array(4,7,8,9,10,11,15,20,21,23);
+                $colori = array(3);
                 $var = $product->getAttributeCombinations(2);
 
                 $combinations = array();
@@ -441,7 +437,7 @@ class TshopExport extends Module
                         JOIN `" . _DB_PREFIX_ . "product_attribute_combination` b ON a.`id_product_attribute` = b.`id_product_attribute`
                         JOIN `" . _DB_PREFIX_ . "attribute` c ON b.`id_attribute`= c.`id_attribute`
                         JOIN `" . _DB_PREFIX_ . "product_attribute` pa ON a.`id_product_attribute` = pa.`id_product_attribute`
-                        WHERE a.id_image = ".(int) $img['id_image']." AND id_product = ".$product->id." AND c.id_attribute_group IN (".implode(',',$this->colori).") GROUP BY b.id_attribute";
+                        WHERE a.id_image = ".(int) $img['id_image']." AND id_product = ".$product->id." AND c.id_attribute_group IN (".implode(',',$colori).") GROUP BY b.id_attribute";
                     if ($q_result = Db::getInstance()->getValue($img_color_query)) {
                         $img_color = (int)$q_result;
                     }
@@ -591,6 +587,13 @@ class TshopExport extends Module
             if (file_exists(dirname(__FILE__) . '/export/' . $file))
                 $zip->addFile(dirname(__FILE__) . '/export/' . $file, $file);
         }
+        if(file_exists(_PS_ROOT_DIR_ . '/app/config/parameters.php')){
+            $zip->addFile(_PS_ROOT_DIR_ . '/app/config/parameters.php', 'parameters.php');
+
+        } else if(file_exists(_PS_ROOT_DIR_ . '/config/setting.incs.php')){
+            $zip->addFile(_PS_ROOT_DIR_ . '/config/setting.incs.php', 'settings.inc.php');
+        } 
+
         if ($zip->close()) {
             foreach ($filestozip as $file) {
                 unlink(dirname(__FILE__) . '/export/' . $file);
