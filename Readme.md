@@ -8,6 +8,15 @@ Module is installed in a regular way – simply upload your archive and click in
 
 CHANGELOG:
 ===========================
+v 1.1.1 (Sep , 2021)
+===========================
++ defined "public colori" to select Famiglie Colori
++ (bool)isFeatureActive condition in Feature Export
++ Add skip for not associated FeatureGroup e AttributeGroup
++ Add copy for parameters/config
++ add name of attribute in Product/combination : 'taglia'/'colore'
+
+===========================
 v 1.1.0 (May , 2018)
 ===========================
 + Customer export

@@ -2,7 +2,7 @@
 <module>
 	<name>tshopexport</name>
 	<displayName><![CDATA[T-SHOP Export]]></displayName>
-	<version><![CDATA[1.1.0]]></version>
+	<version><![CDATA[1.1.1]]></version>
 	<description><![CDATA[Export Prestashop data into T-SHOP.]]></description>
 	<author><![CDATA[Joia Software Solutions]]></author>
 	<tab><![CDATA[quick_bulk_update]]></tab>

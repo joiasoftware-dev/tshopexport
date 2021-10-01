@@ -21,12 +21,14 @@ class TshopExport extends Module
 
     public $lang_default;
     public $languages;
+    //IMPORTANT define ID_ATTRIBUTE for COLORI
+    public $colori = array(2,5);
 
     public function __construct()
     {
         $this->name = 'tshopexport';
         $this->tab = 'quick_bulk_update';
-        $this->version = '1.1.0';
+        $this->version = '1.1.1';
         $this->author = 'Joia Software Solutions';
         $this->need_instance = 0;
         //$this->module_key = '3470670a179c6b58d5db00cc36463d8c';
@@ -134,9 +136,17 @@ class TshopExport extends Module
                 $data_upd = DateTime::createFromFormat('Y-m-d H:i:s', pSQL($obj['date_upd']))->format("d-m-Y H:i:s");
             else
                 $data_upd = date("d-m-y H:i:s");
+                
+            $sql_is_used = "SELECT if(b.id_attribute is null,0,COUNT(*)) as conta from `"._DB_PREFIX_
+            ."attribute` a JOIN `"._DB_PREFIX_."attribute_group_lang` g on a.id_attribute_group=g.id_attribute_group "
+            ." LEFT OUTER JOIN `"._DB_PREFIX_."product_attribute_combination` b on a.id_attribute =b.id_attribute where g.id_attribute_group = ".(int)$obj['id_attribute_group']
+            ." GROUP by g.id_attribute_group ";
+            if(!Db::getInstance()->getValue($sql_is_used)){
+                continue;
+            }
             $xml->startElement('attribute');
             $xml->writeAttribute('id_prestashop', $obj['id_attribute_group']);
-            if ($obj['is_color_group'] == 1)
+            if ($obj['is_color_group'] == 1 or in_array((int)$obj['id_attribute_group'],$this->colori))
                 $xml->writeAttribute('id_color', '1');
             else
                 $xml->writeAttribute('id_size', '1');
@@ -245,37 +255,42 @@ class TshopExport extends Module
         $xml->setIndent(true);
         $xml->startDocument('1.0', 'UTF-8');
         $xml->startElement('features');
-        foreach ($element as $i => $obj) {
-            if (isset($obj['date_upd']))
-                $data_upd = DateTime::createFromFormat('Y-m-d H:i:s', pSQL($obj['date_upd']))->format("d-m-Y H:i:s");
-            else
-                $data_upd = date("d-m-y H:i:s");
-            $xml->startElement('feature');
-            $xml->writeAttribute('id_prestashop', $obj['id_feature']);
-            $xml->writeAttribute('date_upd', $data_upd);
-            $xml->startElement('name');
-            $xml->writeCdata($obj['name']);
-            $xml->endElement();
-            $xml->startElement("langs");
-            foreach ($this->languages as $lang) {
-                $xml->startElement("lang");
-                $xml->writeAttribute('id', $lang['id_lang']);
-                $list = FeatureValue::getFeatureValuesWithLang($lang['id_lang'], $obj['id_feature'], true);
-                foreach ($list as $value) {
-                    $xml->startElement("name");
-                    $xml->writeAttribute('id_feature_value_prestashop', $value['id_feature_value']);
-                    $xml->writeCdata($value['value']);
+        if(Feature::isFeatureActive()){
+            foreach ($element as $i => $obj) {
+                if (isset($obj['date_upd']))
+                    $data_upd = DateTime::createFromFormat('Y-m-d H:i:s', pSQL($obj['date_upd']))->format("d-m-Y H:i:s");
+                else
+                    $data_upd = date("d-m-y H:i:s");
+                $is_used = Db::getInstance()->getValue("SELECT COUNT(*) from `"._DB_PREFIX_."feature_product` where id_feature = ". (int)$obj['id_feature']);
+                if(!$is_used){
+                    continue;
+                }
+                $xml->startElement('feature');
+                $xml->writeAttribute('id_prestashop', $obj['id_feature']);
+                $xml->writeAttribute('date_upd', $data_upd);
+                $xml->startElement('name');
+                $xml->writeCdata($obj['name']);
+                $xml->endElement();
+                $xml->startElement("langs");
+                foreach ($this->languages as $lang) {
+                    $xml->startElement("lang");
+                    $xml->writeAttribute('id', $lang['id_lang']);
+                    $list = FeatureValue::getFeatureValuesWithLang($lang['id_lang'], $obj['id_feature'], true);
+                    foreach ($list as $value) {
+                        $xml->startElement("name");
+                        $xml->writeAttribute('id_feature_value_prestashop', $value['id_feature_value']);
+                        $xml->writeCdata($value['value']);
+                        $xml->endElement();
+                    }
                     $xml->endElement();
                 }
                 $xml->endElement();
-            }
-            $xml->endElement();
-            $xml->endElement();
-            if (0 == $i % 1000) {
-                file_put_contents(dirname(__FILE__) . '/export/feature.xml', $xml->flush(true), FILE_APPEND);
+                $xml->endElement();
+                if (0 == $i % 1000) {
+                    file_put_contents(dirname(__FILE__) . '/export/feature.xml', $xml->flush(true), FILE_APPEND);
+                }
             }
         }
-        
         $xml->endElement();
         file_put_contents(dirname(__FILE__) . '/export/feature.xml', $xml->flush(true), FILE_APPEND);
         return 'feature.xml';
@@ -306,7 +321,7 @@ class TshopExport extends Module
                 $xml->writeAttribute('active', $product->active);
                 $xml->writeAttribute('date_upd', $data_upd);
 
-                //
+                //Product Name
                 $xml->startElement("name");
                   $xml->writeCdata($product->name);
                 $xml->endElement();
@@ -399,16 +414,17 @@ class TshopExport extends Module
                 $xml->endElement();
 
                 // Combinations
-                $colori = array(3);
-                $var = $product->getAttributeCombinations(2);
+                $var = $product->getAttributeCombinations((int) $this->lang_default);
 
                 $combinations = array();
                 foreach ($var as $i) {
                     $combinations[$i['id_product_attribute']]['quantity'] = $i['quantity'];
-                    if (! in_array((int) $i['id_attribute_group'], $colori))
+                    if (! in_array((int) $i['id_attribute_group'], $this->colori)){
                         $combinations[$i['id_product_attribute']]['attribute'][0] = $i['id_attribute'];
-                    else {
+                        $combinations[$i['id_product_attribute']]['attribute']['taglia'] = $i['attribute_name'];
+                    } else {
                         $combinations[$i['id_product_attribute']]['attribute'][1] = $i['id_attribute'];
+                        $combinations[$i['id_product_attribute']]['attribute']['colore'] = $i['attribute_name'];
                     }
                     $combinations[$i['id_product_attribute']]['ean13'] = pSQL($i['ean13']);
                     $combinations[$i['id_product_attribute']]['price'] = pSQL($i['price']);
@@ -424,6 +440,8 @@ class TshopExport extends Module
                     $xml->writeAttribute('price', str_replace(".", ",", $combination['price']));
                     $xml->writeAttribute('quantity', $combination['quantity']);
                     $xml->writeAttribute('posfoto', '-');
+                    $xml->writeAttribute('taglia', $combination['attribute']['taglia']);
+                    $xml->writeAttribute('colore', $combination['attribute']['colore']);
                     $xml->endElement();
                 }
                 $xml->endElement();
@@ -437,7 +455,7 @@ class TshopExport extends Module
                         JOIN `" . _DB_PREFIX_ . "product_attribute_combination` b ON a.`id_product_attribute` = b.`id_product_attribute`
                         JOIN `" . _DB_PREFIX_ . "attribute` c ON b.`id_attribute`= c.`id_attribute`
                         JOIN `" . _DB_PREFIX_ . "product_attribute` pa ON a.`id_product_attribute` = pa.`id_product_attribute`
-                        WHERE a.id_image = ".(int) $img['id_image']." AND id_product = ".$product->id." AND c.id_attribute_group IN (".implode(',',$colori).") GROUP BY b.id_attribute";
+                        WHERE a.id_image = ".(int) $img['id_image']." AND id_product = ".$product->id." AND c.id_attribute_group IN (".implode(',',$this->colori).") GROUP BY b.id_attribute";
                     if ($q_result = Db::getInstance()->getValue($img_color_query)) {
                         $img_color = (int)$q_result;
                     }
